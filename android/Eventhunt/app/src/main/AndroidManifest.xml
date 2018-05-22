@@ -3,6 +3,7 @@
     package="com.eventhunt">
     
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-feature android:name="android.hardware.location.gps" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -16,11 +17,6 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity android:name=".MapsActivity"
-            android:label="@string/app_name">
-
         </activity>
 
         <meta-data
