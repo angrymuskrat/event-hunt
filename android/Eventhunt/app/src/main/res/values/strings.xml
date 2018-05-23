@@ -16,4 +16,9 @@
     <string name="permission_rationale">"Contacts permissions are needed for providing email
         completions."
     </string>
+    <string name="fast_search">Быстрый поиск</string>
+    <string name="advanced_search">Расширенный поиск</string>
+    <string name="add_event">Добавить событие</string>
+    <string name="my_filters">Мои фильтры</string>
+    <string name="setting">Настройки</string>
 </resources>

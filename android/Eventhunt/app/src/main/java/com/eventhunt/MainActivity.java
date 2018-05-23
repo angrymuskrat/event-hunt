@@ -3,7 +3,10 @@ package com.eventhunt;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
@@ -20,6 +23,7 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -42,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private Set<String> mPermissionGranted;
     private ProgressBar progressBar;
+    private LocationManager mLocationManager;
     private GoogleMap mMap;
 
     // TODO create activity for entry in app (Login activity)
@@ -57,7 +62,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onResume() {
         super.onResume();
-        // Here, thisActivity is the current activity
         checkPermission();
     }
 
@@ -118,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
 
         // Acquire a reference to the system Location Manager
-        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 /*// Define a listener that responds to location updates
         LocationListener locationListener = new LocationListener() {
@@ -168,6 +172,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+        switch (id) {
+            case R.id.nav_search:
+                // TODO add action for search
+                Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                break;
+            case R.id.nav_adv_search:
+                // TODO add action for advanced search
+                Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                break;
+            case R.id.nav_my_filters:
+                // TODO add action for filters
+                Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                break;
+            case R.id.nav_add_event:
+                // TODO add action for adding events
+                Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                break;
+            case R.id.nav_setting:
+                // TODO add action for setting
+                Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                break;
+            default:
+                // TODO add action for other cases
+                Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                break;
+        }
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
@@ -187,14 +217,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        LatLng sydney = new LatLng(-34, 151);
+        final LatLng position = new LatLng(-34, 151);
         try {
             mMap.setMyLocationEnabled(true);
+            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 10));
+                }
+
+                @Override
+                public void onStatusChanged(String s, int i, Bundle bundle) {
+
+                }
+
+                @Override
+                public void onProviderEnabled(String s) {
+
+                }
+
+                @Override
+                public void onProviderDisabled(String s) {
+
+                }
+            }, null);
         } catch (SecurityException e){
             Log.w(TAG, "We don't have permission for detected user location!\n" + e.getMessage());
         }
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        mMap.addMarker(new MarkerOptions().position(position).title("Marker in Sydney"));
+        //mMap.moveCamera(CameraUpdateFactory.newLatLng(position));
 
     }
 }

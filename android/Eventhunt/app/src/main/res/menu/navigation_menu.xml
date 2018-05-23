@@ -5,20 +5,23 @@
         <item
             android:id="@+id/nav_search"
             android:icon="@drawable/ic_search_black"
-            android:title="Search" />
+            android:title="@string/fast_search" />
         <item
-            android:id="@+id/nav_map"
-            android:icon="@drawable/ic_map_black"
-            android:title="Map"/>
+            android:id="@+id/nav_adv_search"
+            android:icon="@drawable/ic_search_black"
+            android:title="@string/advanced_search"/>
+        <item
+            android:id="@+id/nav_add_event"
+            android:icon="@drawable/ic_add_event_black"
+            android:title="@string/add_event"/>
+        <item
+            android:id="@+id/nav_my_filters"
+            android:icon="@drawable/ic_filter_black"
+            android:title="@string/my_filters"/>
+        <item
+            android:id="@+id/nav_setting"
+            android:icon="@drawable/ic_settings_black"
+            android:title="@string/setting"/>
     </group>
-
-    <item android:title="Account">
-        <menu>
-            <item
-                android:id="@+id/nav_profile"
-                android:icon="@drawable/ic_account_box_black"
-                android:title="Profile" />
-        </menu>
-    </item>
 
 </menu>
