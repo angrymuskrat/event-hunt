@@ -44,6 +44,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ProgressBar progressBar;
     private GoogleMap mMap;
 
+    // TODO create activity for entry in app (Login activity)
+    // TODO check user after login or come up with another logic for checking users
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -78,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // TODO if mMap is show on activity, but we haven't yet received permission, after that we should run method for detect user location
     private void addInPermissionGranted(String permission){
         if(!mPermissionGranted.add(permission)){
             Log.w(TAG, "permission not added in Set (" + permission + ")");
