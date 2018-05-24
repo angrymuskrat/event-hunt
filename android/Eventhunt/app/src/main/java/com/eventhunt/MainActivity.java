@@ -1,6 +1,9 @@
 package com.eventhunt;
 
 import android.Manifest;
+import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -8,6 +11,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Looper;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -28,6 +32,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
@@ -41,12 +46,12 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback {
 
     private final String TAG = MainActivity.class.getSimpleName();
-    private final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+    private final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION};
     private final int INIT_REQUEST_CODE = 1000;
 
     private Set<String> mPermissionGranted;
     private ProgressBar progressBar;
-    private LocationManager mLocationManager;
+    private MapModel mMapModel;
     private GoogleMap mMap;
 
     // TODO create activity for entry in app (Login activity)
@@ -56,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mPermissionGranted = new HashSet<>();
+        mMapModel = ViewModelProviders.of(this).get(MapModel.class);
+        mMapModel.setLocationManager(this);
         init();
     }
 
@@ -63,6 +70,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onResume() {
         super.onResume();
         checkPermission();
+        LiveData<CameraPosition> position = mMapModel.getCameraPosition();
+        if(position != null){
+            if(mMap != null)
+                mMap.moveCamera(CameraUpdateFactory.newCameraPosition(position.getValue()));
+            else
+                Log.w(TAG, "mMap is null");
+
+        } else
+            Log.w(TAG, "position is null");
     }
 
     public void checkPermission(){
@@ -88,6 +104,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void addInPermissionGranted(String permission){
         if(!mPermissionGranted.add(permission)){
             Log.w(TAG, "permission not added in Set (" + permission + ")");
+        } else{
+            switch (permission){
+                case Manifest.permission.ACCESS_FINE_LOCATION:
+                    mMapModel.callAfterPermission(permission, new PermissionTask() {
+                        @Override
+                        public void task() {
+                            /*final LiveData<CameraPosition> position = mMapModel.getCameraPosition();
+                            position.observeForever(new Observer<CameraPosition>() {
+                                @Override
+                                public void onChanged(@Nullable CameraPosition cameraPosition) {
+                                    if(cameraPosition != null) {
+                                        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+                                        position.removeObserver(this);
+                                    }
+
+                                }
+                            });*/
+                            mMapModel.getCameraPosition();
+                        }
+                    });
+                    break;
+            }
         }
     }
 
@@ -120,33 +158,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 this, drawer, null, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
         toggle.syncState();
-
-        // Acquire a reference to the system Location Manager
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-/*// Define a listener that responds to location updates
-        LocationListener locationListener = new LocationListener() {
-            public void onLocationChanged(Location location) {
-                // Called when a new location is found by the network location provider.
-                makeUseOfNewLocation(location);
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };*/
-
-// Register the listener with the Location Manager to receive location updates
-
-//        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mMapModel.setCameraPositionLiveData(mMap.getCameraPosition());
     }
 
     @Override
@@ -156,6 +175,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case INIT_REQUEST_CODE:
                 for (String permission : permissions) {
                     addInPermissionGranted(permission);
+                    Log.w(TAG, "permission is granted " + permission);
                 }
                 break;
             default:
@@ -220,27 +240,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         final LatLng position = new LatLng(-34, 151);
         try {
             mMap.setMyLocationEnabled(true);
-            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
+            final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
+            cameraPositionLiveData.observeForever(new Observer<CameraPosition>() {
                 @Override
-                public void onLocationChanged(Location location) {
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 10));
+                public void onChanged(@Nullable CameraPosition cameraPosition) {
+                    if(cameraPosition != null) {
+                        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+                        cameraPositionLiveData.removeObserver(this);
+                    }
                 }
-
-                @Override
-                public void onStatusChanged(String s, int i, Bundle bundle) {
-
-                }
-
-                @Override
-                public void onProviderEnabled(String s) {
-
-                }
-
-                @Override
-                public void onProviderDisabled(String s) {
-
-                }
-            }, null);
+            });
+//            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mMapModel.getCameraPosition().getValue()));
         } catch (SecurityException e){
             Log.w(TAG, "We don't have permission for detected user location!\n" + e.getMessage());
         }
