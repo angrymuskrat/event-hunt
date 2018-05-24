@@ -14,6 +14,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -45,11 +46,12 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback {
 
-    private final String TAG = MainActivity.class.getSimpleName();
-    private final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION};
-    private final int INIT_REQUEST_CODE = 1000;
+    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION};
+    private static final int INIT_REQUEST_CODE = 1000;
 
     private Set<String> mPermissionGranted;
+    private FragmentManager mFragmentManager;
     private ProgressBar progressBar;
     private MapModel mMapModel;
     private GoogleMap mMap;
@@ -63,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mPermissionGranted = new HashSet<>();
         mMapModel = ViewModelProviders.of(this).get(MapModel.class);
         mMapModel.setLocationManager(this);
+        mFragmentManager = getSupportFragmentManager();
         init();
     }
 
@@ -73,7 +76,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         LiveData<CameraPosition> position = mMapModel.getCameraPosition();
         if(position != null){
             if(mMap != null)
-                mMap.moveCamera(CameraUpdateFactory.newCameraPosition(position.getValue()));
+                if(position.getValue() != null) {
+                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(position.getValue()));
+                }
             else
                 Log.w(TAG, "mMap is null");
 
@@ -204,6 +209,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.nav_my_filters:
                 // TODO add action for filters
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                findViewById(R.id.fragment_layout).setVisibility(View.VISIBLE);
+                mFragmentManager.beginTransaction()
+                        .add(R.id.fragment_layout, new FilterFragment()).commit();
                 break;
             case R.id.nav_add_event:
                 // TODO add action for adding events

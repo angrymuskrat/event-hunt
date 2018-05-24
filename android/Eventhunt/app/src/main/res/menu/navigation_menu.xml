@@ -15,6 +15,10 @@
             android:icon="@drawable/ic_add_event_black"
             android:title="@string/add_event"/>
         <item
+            android:id="@+id/nav_my_events"
+            android:icon="@drawable/ic_add_event_black"
+            android:title="@string/my_events" />
+        <item
             android:id="@+id/nav_my_filters"
             android:icon="@drawable/ic_filter_black"
             android:title="@string/my_filters"/>
