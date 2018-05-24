@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
                 findViewById(R.id.fragment_layout).setVisibility(View.VISIBLE);
                 mFragmentManager.beginTransaction()
-                        .add(R.id.fragment_layout, new FilterFragment()).commit();
+                        .replace(R.id.fragment_layout, new FilterFragment()).commit();
                 break;
             case R.id.nav_add_event:
                 // TODO add action for adding events

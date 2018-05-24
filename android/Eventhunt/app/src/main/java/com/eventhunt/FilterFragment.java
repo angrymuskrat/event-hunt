@@ -47,6 +47,7 @@ public class FilterFragment extends Fragment {
             }
         });
         ArrayAdapter<CharSequence> adapterGenre = ArrayAdapter.createFromResource(this.getContext(), R.array.type_genre_array, android.R.layout.simple_spinner_item);
+        adapterGenre.setDropDownViewResource(android.R.layout.simple_dropdown_item_1line);
         typeGenre.setAdapter(adapterGenre);
         typeEvent.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
