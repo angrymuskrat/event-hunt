@@ -29,4 +29,5 @@
     <string name="choice_genre">Выберите жанр</string>
     <string name="sb_time_title">Начало в течении</string>
     <string name="sb_cost_title">Билеты до</string>
+    <string name="find">Найти</string>
 </resources>
