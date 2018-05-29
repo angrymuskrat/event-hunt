@@ -1,5 +1,6 @@
 package com.eventhunt;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.MutableLiveData;
@@ -51,30 +52,38 @@ public class MapModel extends ViewModel {
         cameraPositionLiveData.setValue(cameraPosition);
     }
 
-    @SuppressLint("MissingPermission")
+
     public LiveData<CameraPosition> getCameraPosition(){
         if(cameraPositionLiveData.getValue() == null){
-            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
-                @Override
-                public void onLocationChanged(Location location) {
-                    CameraPosition cameraPosition = new CameraPosition.Builder()
-                    .target(new LatLng(location.getLatitude(), location.getLongitude())).zoom(10).build();
-                    cameraPositionLiveData.setValue(cameraPosition);
-                }
 
-                @Override
-                public void onStatusChanged(String provider, int status, Bundle extras) {
-                }
-
-                @Override
-                public void onProviderEnabled(String provider) {
-                }
-
-                @Override
-                public void onProviderDisabled(String provider) {
-                }
-            }, null);
+            if(permissionIsCalled.get(Manifest.permission.ACCESS_FINE_LOCATION) != null
+                    && permissionIsCalled.get(Manifest.permission.ACCESS_FINE_LOCATION))
+                updateCameraPosition();
         }
         return cameraPositionLiveData;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void updateCameraPosition() {
+        mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(new LatLng(location.getLatitude(), location.getLongitude())).zoom(10).build();
+                cameraPositionLiveData.setValue(cameraPosition);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+            }
+        }, null);
     }
 }
