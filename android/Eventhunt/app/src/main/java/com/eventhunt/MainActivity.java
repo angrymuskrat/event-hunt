@@ -5,6 +5,7 @@ import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -29,6 +30,10 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
+import com.eventhunt.entity.User;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -36,12 +41,17 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.signin.SignIn;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback {
@@ -55,18 +65,68 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ProgressBar progressBar;
     private MapModel mMapModel;
     private GoogleMap mMap;
+    private FirebaseAuth firebaseAuth;
 
     // TODO create activity for entry in app (Login activity)
     // TODO check user after login or come up with another logic for checking users
+    // TODO check google account and get Token
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        firebaseAuth = FirebaseAuth.getInstance();
         mPermissionGranted = new HashSet<>();
         mMapModel = ViewModelProviders.of(this).get(MapModel.class);
         mMapModel.setLocationManager(this);
         mFragmentManager = getSupportFragmentManager();
+        GoogleSignInAccount mGoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(this);
+        if(mGoogleSignInAccount == null) {
+            startActivity(new Intent(this, LoginActivity.class));
+        } else {
+            if (User.isEmpty()) {
+                User.setAccount(mGoogleSignInAccount);
+            } else if (!User.getAccount().equals(mGoogleSignInAccount)) {
+                startActivity(new Intent(this, LoginActivity.class));
+            }
+            if(User.getAccount().getIdToken() == null){
+                //firebaseAuthWithGoogle(User.getAccount());
+                //Log.w(TAG, User.getAccount().getServerAuthCode());
+            }
+            Log.w(TAG, mGoogleSignInAccount.getDisplayName());
+        }
         init();
+    }
+
+    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        firebaseAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        System.out.println("signInWithCredential:onComplete:" + task.isSuccessful());
+
+                        if (!task.isSuccessful()) {
+                            System.out.println("signInWithCredential" + task.getException());
+                            Toast.makeText(MainActivity.this, "Authentication failed.",Toast.LENGTH_SHORT).show();
+                        } else
+                            Log.w(TAG, task.getResult().getUser().getDisplayName() + " " + task.getResult().getUser().getPhoneNumber());
+                    }
+                });
+
+    }
+
+    private void handleSignInResult(@NonNull Task<GoogleSignInAccount> completedTask) {
+        try {
+            GoogleSignInAccount account = completedTask.getResult(ApiException.class);
+            String idToken = account.getIdToken();
+            Log.w(TAG, idToken);
+            // TODO(developer): send ID Token to server and validate
+
+            User.setAccount(account);
+        } catch (ApiException e) {
+            Log.w(TAG, "handleSignInResult:error", e);
+            User.setAccount(null);
+        }
     }
 
     @Override
