@@ -29,8 +29,8 @@ public class MapModel extends ViewModel {
         permissionIsCalled = new HashMap<>();
     }
 
-    public void setPermissionIsCalled(Set<String> permission) {
-        for (String p : permission) {
+    public void setPermission(String[] permissions) {
+        for (String p : permissions) {
             permissionIsCalled.put(p, false);
         }
     }

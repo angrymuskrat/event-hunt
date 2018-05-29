@@ -21,7 +21,9 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.eventhunt.entity.User;
@@ -41,6 +43,7 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -52,13 +55,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION};
     private static final int INIT_REQUEST_CODE = 1000;
+    public static final int FILTER_REQUEST_CODE = 1002;
 
-    private Set<String> mPermissionGranted;
     private FragmentManager mFragmentManager;
     private ProgressBar progressBar;
     private MapModel mMapModel;
     private GoogleMap mMap;
     private FirebaseAuth firebaseAuth;
+    private boolean isUpdated = false;
 
     // TODO create activity for entry in app (Login activity)
     // TODO check user after login or come up with another logic for checking users
@@ -68,9 +72,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         firebaseAuth = FirebaseAuth.getInstance();
-        mPermissionGranted = new HashSet<>();
         mMapModel = ViewModelProviders.of(this).get(MapModel.class);
         mMapModel.setLocationManager(this);
+        mMapModel.setPermission(PERMISSIONS_REQUEST);
         mFragmentManager = getSupportFragmentManager();
         checkGoogleAccount();
         init();
@@ -83,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_NO_HISTORY | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         } else {
+            Log.w(TAG, "user is empty? " + User.isEmpty());
             if (User.isEmpty()) {
                 User.setAccount(mGoogleSignInAccount);
             } else if (!User.getAccount().equals(mGoogleSignInAccount)) {
@@ -92,13 +97,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 //firebaseAuthWithGoogle(User.getAccount());
                 //Log.w(TAG, User.getAccount().getServerAuthCode());
             }
-            updateUi();
+            isUpdated = true;
             Log.w(TAG, mGoogleSignInAccount.getDisplayName());
         }
     }
 
     private void updateUi(){
 
+        //lastName.setText(User.getAccount().getFamilyName());
     }
 
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
@@ -170,15 +176,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     // TODO if mMap is show on activity, but we haven't yet received permission, after that we should run method for detect user location
-    private void addInPermissionGranted(String permission){
-        if(!mPermissionGranted.add(permission)){
-            Log.w(TAG, "permission not added in Set (" + permission + ")");
-        } else{
-            switch (permission){
-                case Manifest.permission.ACCESS_FINE_LOCATION:
-                    mMapModel.callAfterPermission(permission, new PermissionTask() {
-                        @Override
-                        public void task() {
+    private void addInPermissionGranted(String permission) {
+        switch (permission) {
+            case Manifest.permission.ACCESS_FINE_LOCATION:
+                mMapModel.callAfterPermission(permission, new PermissionTask() {
+                    @Override
+                    public void task() {
                             /*final LiveData<CameraPosition> position = mMapModel.getCameraPosition();
                             position.observeForever(new Observer<CameraPosition>() {
                                 @Override
@@ -190,11 +193,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                                 }
                             });*/
-                            mMapModel.getCameraPosition();
-                        }
-                    });
-                    break;
-            }
+                        Log.w(TAG, "in method task");
+                        mMapModel.getCameraPosition();
+                    }
+                });
+                break;
         }
     }
 
@@ -229,6 +232,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        if(isUpdated) {
+            View view = navigationView.getHeaderView(0);
+            TextView name = view.findViewById(R.id.tv_first_name);
+            TextView lastName = view.findViewById(R.id.tv_second_name);
+            //Log.w(TAG, User.getAccount().getDisplayName() + (name == null));
+            name.setText(User.getAccount().getGivenName());
+            lastName.setText(User.getAccount().getFamilyName());
+            ImageView imageView = view.findViewById(R.id.iv_photo);
+            Picasso.get().load(User.getAccount().getPhotoUrl()).into(imageView);
+        }
     }
 
     @Override
@@ -273,9 +286,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.nav_my_filters:
                 // TODO add action for filters
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
-                findViewById(R.id.fragment_layout).setVisibility(View.VISIBLE);
-                mFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_layout, new FilterFragment()).commit();
+                Intent intent = new Intent(this, FilterActivity.class);
+                startActivityForResult(intent, FILTER_REQUEST_CODE);
                 break;
             case R.id.nav_add_event:
                 // TODO add action for adding events
@@ -311,12 +323,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         final LatLng position = new LatLng(-34, 151);
         try {
-            mMap.setMyLocationEnabled(true);
             final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
             cameraPositionLiveData.observeForever(new Observer<CameraPosition>() {
                 @Override
                 public void onChanged(@Nullable CameraPosition cameraPosition) {
+                    Log.w(TAG, "call?");
                     if(cameraPosition != null) {
+                        mMap.setMyLocationEnabled(true);
                         mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
                         cameraPositionLiveData.removeObserver(this);
                     }
@@ -328,6 +341,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         mMap.addMarker(new MarkerOptions().position(position).title("Marker in Sydney"));
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(position));
+    }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == FILTER_REQUEST_CODE){
+            if(resultCode == FilterActivity.FILTER_RESULT_CODE){
+                String event = data.getStringExtra(FilterActivity.TYPE_EVENT);
+                String genre = data.getStringExtra(FilterActivity.TYPE_GENRE);
+                int time = data.getIntExtra(FilterActivity.TIME, -1);
+                int cost = data.getIntExtra(FilterActivity.COST, -1);
+                Log.w(TAG, event + " " + genre + " " + time + " " + cost);
+            }
+        }
     }
 }
