@@ -31,13 +31,19 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.eventhunt.entity.User;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,11 +81,24 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private GoogleSignInClient mGoogleSignInClient;
     private GoogleSignInAccount mGoogleSignInAccount;
 
+    // TODO how to get Token if we get GoogleSignInAccount from method GoogleSignIn.getLastSignedInAccount(this)?
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         // Set up the login form.
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
+        mGoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(this);
+
+        if(mGoogleSignInAccount == null) {
+            mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+        } else {
+            Log.w(TAG, "Token = " + mGoogleSignInAccount.getIdToken() + "\n" + mGoogleSignInAccount.getDisplayName());
+            User.setAccount(mGoogleSignInAccount);
+            finish();
+        }
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
         populateAutoComplete();
 
@@ -102,15 +121,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                 attemptLogin();
             }
         });
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestEmail()
-                .build();
-         mGoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(this);
-        if(mGoogleSignInAccount == null) {
-            mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-        } else {
-            Log.w(TAG, "Token = " + mGoogleSignInAccount.getIdToken());
-        }
+
+
         SignInButton signInButton = findViewById(R.id.sing_in_google);
         signInButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -128,6 +140,22 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         startActivityForResult(signInIntent, 10001);
     }
 
+    /*private void firebaseAuthWithGoogle(GoogleSignInAccount acct){
+        //show progressbar
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.d(TAG, "signWithCredential:onComplete:" + task.isSuccessful() + FirebaseAuth.getInstance().getCurrentUser());
+                        handleSignInSuccess();
+                        hideProgressDialog();
+                    }
+                });
+
+    }*/
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -142,6 +170,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
             // Signed in successfully, show authenticated UI.
             mGoogleSignInAccount = completedTask.getResult(ApiException.class);
+            User.setAccount(mGoogleSignInAccount);
+            finish();
         } catch (ApiException e) {
             // The ApiException status code indicates the detailed failure reason.
             // Please refer to the GoogleSignInStatusCodes class reference for more information.
