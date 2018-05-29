@@ -84,8 +84,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         GoogleSignInAccount mGoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(this);
         if(mGoogleSignInAccount == null) {
             Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_NO_HISTORY | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+            Log.w(TAG, "start LoginActivity");
             startActivity(intent);
+            finish();
         } else {
             Log.w(TAG, "user is empty? " + User.isEmpty());
             if (User.isEmpty()) {
@@ -217,6 +219,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void init() {
+        Log.w(TAG, "init");
         progressBar = findViewById(R.id.progressBar);
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
@@ -247,6 +250,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onStop() {
         super.onStop();
+        Log.w(TAG, "Stop?");
         mMapModel.setCameraPositionLiveData(mMap.getCameraPosition());
     }
 

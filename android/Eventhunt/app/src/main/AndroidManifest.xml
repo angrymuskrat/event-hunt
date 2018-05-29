@@ -33,7 +33,8 @@
 
         <activity
             android:name=".LoginActivity"
-            android:label="@string/title_activity_login"></activity>
+            android:label="@string/title_activity_login"
+            android:launchMode="singleInstance"></activity>
         <activity
             android:name=".FilterActivity"
             android:label="Фильтр" />
