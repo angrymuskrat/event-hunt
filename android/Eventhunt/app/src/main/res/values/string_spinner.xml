@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="type_event_array">
+        <item>Любой</item>
+        <item>Концерт</item>
+    </string-array>
+
+    <string-array name="type_genre_array">
+        <item>Любой</item>
+        <item>Рок</item>
+        <item>Джаз</item>
+    </string-array>
+</resources>
