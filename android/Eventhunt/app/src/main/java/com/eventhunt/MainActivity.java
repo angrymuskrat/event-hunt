@@ -79,9 +79,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mMapModel = ViewModelProviders.of(this).get(MapModel.class);
         mMapModel.setLocationManager(this);
         mFragmentManager = getSupportFragmentManager();
+        checkGoogleAccount();
+        init();
+    }
+
+    private void checkGoogleAccount(){
         GoogleSignInAccount mGoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(this);
         if(mGoogleSignInAccount == null) {
-            startActivity(new Intent(this, LoginActivity.class));
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_NO_HISTORY | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
         } else {
             if (User.isEmpty()) {
                 User.setAccount(mGoogleSignInAccount);
@@ -92,9 +99,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 //firebaseAuthWithGoogle(User.getAccount());
                 //Log.w(TAG, User.getAccount().getServerAuthCode());
             }
+            updateUi();
             Log.w(TAG, mGoogleSignInAccount.getDisplayName());
         }
-        init();
+    }
+
+    private void updateUi(){
+
     }
 
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
