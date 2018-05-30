@@ -34,10 +34,15 @@
         <activity
             android:name=".LoginActivity"
             android:label="@string/title_activity_login"
-            android:launchMode="singleInstance"></activity>
+            android:launchMode="singleInstance"
+            android:theme="@style/AppTheme.ActionBar" />
         <activity
             android:name=".FilterActivity"
-            android:label="Фильтр" />
+            android:label="Фильтр"
+            android:theme="@style/AppTheme.ActionBar" />
+        <activity android:name=".AddEventActivity"
+            android:theme="@style/AppTheme.ActionBar"
+            android:label="Добавление события" />
     </application>
 
 </manifest>
