@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class MapModel extends ViewModel {
+    private static final String TAG = MapModel.class.getSimpleName();
+
     private MutableLiveData<CameraPosition> cameraPositionLiveData;
     private LocationManager mLocationManager;
     private Map<String, Boolean> permissionIsCalled;
@@ -64,27 +66,36 @@ public class MapModel extends ViewModel {
     @SuppressLint("MissingPermission")
     private void updateCameraPosition() {
         Boolean perm = permissionIsCalled.get(Manifest.permission.ACCESS_FINE_LOCATION);
-        if (perm != null && perm)
-            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
+        Log.w(TAG, (perm == null) + " " + perm);
+        if (perm != null && perm) {
+            final LocationListener locationListener = new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
+                    Log.w(TAG + "Location", "LocationChanged");
                     CameraPosition cameraPosition = new CameraPosition.Builder()
                             .target(new LatLng(location.getLatitude(), location.getLongitude())).zoom(10).build();
                     cameraPositionLiveData.setValue(cameraPosition);
+                    mLocationManager.removeUpdates(this);
                 }
 
                 @Override
                 public void onStatusChanged(String provider, int status, Bundle extras) {
+                    Log.w(TAG + "Location", "StatusChanged");
                 }
 
                 @Override
                 public void onProviderEnabled(String provider) {
+                    Log.w(TAG + "Location", "ProviderEnabled");
                 }
 
                 @Override
                 public void onProviderDisabled(String provider) {
+                    Log.w(TAG + "Location", "ProviderDisable");
                 }
-            }, null);
+            };
+            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, locationListener, null);
+        }
+
     }
 
 }

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -16,11 +17,14 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.animation.Animation;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -36,6 +40,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -56,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION};
     private static final int INIT_REQUEST_CODE = 1000;
     public static final int FILTER_REQUEST_CODE = 1002;
+    public static final int ADD_EVENT_REQUEST_CODE = 1003;
 
     private FragmentManager mFragmentManager;
     private ProgressBar progressBar;
@@ -96,9 +102,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 startActivity(new Intent(this, LoginActivity.class));
             }
             if(User.getAccount().getIdToken() == null){
-                //firebaseAuthWithGoogle(User.getAccount());
-                //Log.w(TAG, User.getAccount().getServerAuthCode());
-            }
+                firebaseAuthWithGoogle(User.getAccount());
+                Log.w(TAG, User.getAccount().getIdToken());
+            } else
+                Log.w(TAG, User.getAccount().getIdToken());
             isUpdated = true;
             Log.w(TAG, mGoogleSignInAccount.getDisplayName());
         }
@@ -227,6 +234,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        View viewMap = mapFragment.getView();
+        //viewMap.setAnimation(new MapResizeAnimation(viewMap, 200));
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -235,6 +244,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        Button button = findViewById(R.id.btn_find_map);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.w(TAG, "Button on map is clicked");
+            }
+        });
         if(isUpdated) {
             View view = navigationView.getHeaderView(0);
             TextView name = view.findViewById(R.id.tv_first_name);
@@ -278,6 +294,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+        Intent intent;
         switch (id) {
             case R.id.nav_search:
                 // TODO add action for search
@@ -290,12 +307,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.nav_my_filters:
                 // TODO add action for filters
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
-                Intent intent = new Intent(this, FilterActivity.class);
-                startActivityForResult(intent, FILTER_REQUEST_CODE);
+                //intent = new Intent(this, FilterActivity.class);
+                //startActivityForResult(intent, FILTER_REQUEST_CODE);
                 break;
             case R.id.nav_add_event:
                 // TODO add action for adding events
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
+                //intent = new Intent(this, AddEventActivity.class);
+                //startActivityForResult(intent, ADD_EVENT_REQUEST_CODE);
+                if(mMap != null){
+                    AddInfoWindowAdapter addInfoWindowAdapter = new AddInfoWindowAdapter(this);
+                    mMap.setInfoWindowAdapter(addInfoWindowAdapter);
+                    mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+                        @Override
+                        public void onMarkerDragStart(Marker marker) {
+
+                        }
+
+                        @Override
+                        public void onMarkerDrag(Marker marker) {
+                            mMap.animateCamera(CameraUpdateFactory.newLatLng(marker.getPosition()));
+                            marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
+                            Log.w(TAG, marker.getPosition().latitude + " " + marker.getPosition().longitude);
+                            marker.showInfoWindow();
+
+                        }
+
+                        @Override
+                        public void onMarkerDragEnd(Marker marker) {
+
+                        }
+                    });
+                }
                 break;
             case R.id.nav_setting:
                 // TODO add action for setting
@@ -324,7 +367,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
+        mMap.addMarker(new MarkerOptions().position(new LatLng(-34, 149)).title("first marker"));
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+                mMap.addMarker(new MarkerOptions().position(latLng).draggable(true).title("marker"));
+            }
+        });
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                Log.w(TAG, marker.getTitle() + " " + marker.getPosition().toString());
+                marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
+                marker.showInfoWindow();
+                return true;
+            }
+        });
         final LatLng position = new LatLng(-34, 151);
         try {
             final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
@@ -337,6 +395,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
                         cameraPositionLiveData.removeObserver(this);
                     }
+                }
+            });
+            mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+                @Override
+                public void onInfoWindowClick(final Marker marker) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                    builder.setTitle("Событие")
+                            .setMessage("Добавить событие?")
+                            .setIcon(R.drawable.ic_add_event_black)
+                            .setCancelable(false)
+                            .setPositiveButton("Добавить", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    Intent intent = new Intent(MainActivity.this, AddEventActivity.class);
+                                    startActivity(intent);
+                                }
+                            })
+                            .setNegativeButton("Удалить",
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                            marker.remove();
+                                            dialog.cancel();
+                                        }
+                                    });
+                    AlertDialog alert = builder.create();
+                    alert.show();
                 }
             });
 //            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mMapModel.getCameraPosition().getValue()));
