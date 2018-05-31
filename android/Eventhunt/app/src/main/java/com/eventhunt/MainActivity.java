@@ -7,6 +7,8 @@ import android.arch.lifecycle.ViewModelProviders;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -31,6 +33,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.eventhunt.entity.Event;
 import com.eventhunt.entity.User;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -51,6 +54,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.squareup.picasso.Picasso;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -61,8 +65,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String[] PERMISSIONS_REQUEST = {Manifest.permission.ACCESS_FINE_LOCATION};
     private static final int INIT_REQUEST_CODE = 1000;
-    public static final int FILTER_REQUEST_CODE = 1002;
-    public static final int ADD_EVENT_REQUEST_CODE = 1003;
+    private static final int FILTER_REQUEST_CODE = 1002;
+    private static final int ADD_EVENT_REQUEST_CODE = 1003;
 
     private FragmentManager mFragmentManager;
     private ProgressBar progressBar;
@@ -71,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private Button findButton;
     private Button addEventButton;
     private Button removeEventButton;
+    private NavigationView navigationView;
 
     private GoogleMap mMap;
     private FirebaseAuth firebaseAuth;
@@ -237,6 +242,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public void init() {
         Log.w(TAG, "init");
+        Geocoder geocoder = new Geocoder(MainActivity.this);
         markerCreateList = new ArrayList<>();
         progressBar = findViewById(R.id.progressBar);
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
@@ -253,8 +259,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 this, drawer, null, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
         toggle.syncState();
-        NavigationView navigationView = findViewById(R.id.nav_view);
+        navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
 
         frameLayout = findViewById(R.id.frameLayout2);
         findButton = findViewById(R.id.btn_find_map);
@@ -263,8 +270,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         addEventButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, AddEventActivity.class);
-                startActivity(intent);
+                startAddEventActivity(selectedMarker);
             }
         });
 
@@ -321,6 +327,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+        boolean isSelected = false;
         Intent intent;
         switch (id) {
             case R.id.nav_search:
@@ -343,10 +350,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 //intent = new Intent(this, AddEventActivity.class);
                 //startActivityForResult(intent, ADD_EVENT_REQUEST_CODE);
                 enableMarkerFunction = !enableMarkerFunction;
-                if(enableMarkerFunction)
+                if(enableMarkerFunction) {
                     addMarkerFunctional();
-                else
+
+                } else {
                     removeMarkerFunction();
+                    item.setChecked(false);
+                }
                 break;
             case R.id.nav_setting:
                 // TODO add action for setting
@@ -362,8 +372,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
-    private void addMarkerFunctional(){
-        if(mMap != null) {
+    private void addMarkerFunctional() {
+        if (mMap != null) {
             frameLayout.setVisibility(View.VISIBLE);
             findButton.setVisibility(View.GONE);
             for (Marker marker : markerCreateList) {
@@ -418,12 +428,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     builder.setTitle("Событие")
                             .setMessage("Добавить событие?")
                             .setIcon(R.drawable.ic_add_event_black)
-                            .setCancelable(false)
+                            .setCancelable(true)
                             .setPositiveButton("Добавить", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    Intent intent = new Intent(MainActivity.this, AddEventActivity.class);
-                                    startActivity(intent);
+                                    startAddEventActivity(marker);
                                 }
                             })
                             .setNegativeButton("Удалить",
@@ -438,6 +447,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
             });
         }
+    }
+
+    public void startAddEventActivity(Marker marker){
+        Intent intent = new Intent(MainActivity.this, AddEventActivity.class);
+        Geocoder geocoder = new Geocoder(this);
+        try {
+            Address address = geocoder.getFromLocation(marker.getPosition().latitude, marker.getPosition().longitude, 1).get(0);
+            if(address != null)
+                intent.putExtra("Address", address);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(MainActivity.this, "Не удалось получить адрес", Toast.LENGTH_SHORT).show();
+        }
+        startActivityForResult(intent, ADD_EVENT_REQUEST_CODE);
     }
 
     public void removeMarkerFunction(){
@@ -490,6 +514,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } catch (SecurityException e){
             Log.w(TAG, "We don't have permission for detected user location!\n" + e.getMessage());
         }
+
         mMap.addMarker(new MarkerOptions().position(position).title("Marker in Sydney"));
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(position));
     }
@@ -504,6 +529,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 int time = data.getIntExtra(FilterActivity.TIME, -1);
                 int cost = data.getIntExtra(FilterActivity.COST, -1);
                 Log.w(TAG, event + " " + genre + " " + time + " " + cost);
+            }
+        }
+        if(requestCode == ADD_EVENT_REQUEST_CODE){
+            if(resultCode == AddEventActivity.RESULT_SUCCESSFUL_CODE){
+                Event event = data.getParcelableExtra(AddEventActivity.EVENT_KEY);
+                User.addEvent(event);
+                Log.w(TAG + "Event", event.toString());
             }
         }
     }
