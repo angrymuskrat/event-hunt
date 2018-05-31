@@ -26,20 +26,6 @@ public class AddInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
     @Override
     public View getInfoWindow(Marker marker) {
         Log.w(TAG, "InfoWindow");
-        Button addButton = view.findViewById(R.id.btn_add);
-        addButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.w(TAG, "add button is clicked");
-            }
-        });
-        Button removeButton = view.findViewById(R.id.btn_remove);
-        removeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.w(TAG, "remove button is clicked");
-            }
-        });
         TextView xPosition = view.findViewById(R.id.tv_x_position);
         TextView yPosition = view.findViewById(R.id.tv_y_position);
         String snippet = marker.getSnippet();
