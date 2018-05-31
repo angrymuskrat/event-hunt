@@ -25,6 +25,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.Animation;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -66,9 +67,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private FragmentManager mFragmentManager;
     private ProgressBar progressBar;
     private MapModel mMapModel;
+    private FrameLayout frameLayout;
+    private Button findButton;
+    private Button addEventButton;
+    private Button removeEventButton;
+
     private GoogleMap mMap;
     private FirebaseAuth firebaseAuth;
     private boolean isUpdated = false;
+    private boolean enableMarkerFunction = false;
+    private List<Marker> markerCreateList;
+    private Marker selectedMarker;
+
 
     // TODO create activity for entry in app (Login activity)
     // TODO check user after login or come up with another logic for checking users
@@ -227,6 +237,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public void init() {
         Log.w(TAG, "init");
+        markerCreateList = new ArrayList<>();
         progressBar = findViewById(R.id.progressBar);
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
@@ -244,13 +255,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-        Button button = findViewById(R.id.btn_find_map);
-        button.setOnClickListener(new View.OnClickListener() {
+
+        frameLayout = findViewById(R.id.frameLayout2);
+        findButton = findViewById(R.id.btn_find_map);
+        addEventButton = findViewById(R.id.btn_add_event_bottom);
+        removeEventButton = findViewById(R.id.btn_remove_event_bottom);
+        addEventButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.w(TAG, "Button on map is clicked");
+                Intent intent = new Intent(MainActivity.this, AddEventActivity.class);
+                startActivity(intent);
             }
         });
+
+        removeEventButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(selectedMarker != null){
+                    selectedMarker.remove();
+                    selectedMarker = null;
+                }
+            }
+        });
+
         if(isUpdated) {
             View view = navigationView.getHeaderView(0);
             TextView name = view.findViewById(R.id.tv_first_name);
@@ -315,30 +342,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
                 //intent = new Intent(this, AddEventActivity.class);
                 //startActivityForResult(intent, ADD_EVENT_REQUEST_CODE);
-                if(mMap != null){
-                    AddInfoWindowAdapter addInfoWindowAdapter = new AddInfoWindowAdapter(this);
-                    mMap.setInfoWindowAdapter(addInfoWindowAdapter);
-                    mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
-                        @Override
-                        public void onMarkerDragStart(Marker marker) {
-
-                        }
-
-                        @Override
-                        public void onMarkerDrag(Marker marker) {
-                            mMap.animateCamera(CameraUpdateFactory.newLatLng(marker.getPosition()));
-                            marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
-                            Log.w(TAG, marker.getPosition().latitude + " " + marker.getPosition().longitude);
-                            marker.showInfoWindow();
-
-                        }
-
-                        @Override
-                        public void onMarkerDragEnd(Marker marker) {
-
-                        }
-                    });
-                }
+                enableMarkerFunction = !enableMarkerFunction;
+                if(enableMarkerFunction)
+                    addMarkerFunctional();
+                else
+                    removeMarkerFunction();
                 break;
             case R.id.nav_setting:
                 // TODO add action for setting
@@ -354,47 +362,53 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
-    @Override
-    public void onBackPressed() {
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        if (drawer.isDrawerOpen(GravityCompat.START)) {
-            drawer.closeDrawer(GravityCompat.START);
-        } else {
-            super.onBackPressed();
-        }
-    }
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-        mMap.addMarker(new MarkerOptions().position(new LatLng(-34, 149)).title("first marker"));
-        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
-            @Override
-            public void onMapLongClick(LatLng latLng) {
-                mMap.addMarker(new MarkerOptions().position(latLng).draggable(true).title("marker"));
+    private void addMarkerFunctional(){
+        if(mMap != null) {
+            frameLayout.setVisibility(View.VISIBLE);
+            findButton.setVisibility(View.GONE);
+            for (Marker marker : markerCreateList) {
+                marker.setDraggable(true);
             }
-        });
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-            @Override
-            public boolean onMarkerClick(Marker marker) {
-                Log.w(TAG, marker.getTitle() + " " + marker.getPosition().toString());
-                marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
-                marker.showInfoWindow();
-                return true;
-            }
-        });
-        final LatLng position = new LatLng(-34, 151);
-        try {
-            final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
-            cameraPositionLiveData.observeForever(new Observer<CameraPosition>() {
+            AddInfoWindowAdapter addInfoWindowAdapter = new AddInfoWindowAdapter(this);
+            mMap.setInfoWindowAdapter(addInfoWindowAdapter);
+            mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
                 @Override
-                public void onChanged(@Nullable CameraPosition cameraPosition) {
-                    Log.w(TAG, "call?");
-                    if(cameraPosition != null) {
-                        mMap.setMyLocationEnabled(true);
-                        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-                        cameraPositionLiveData.removeObserver(this);
-                    }
+                public void onMarkerDragStart(Marker marker) {
+
+                }
+
+                @Override
+                public void onMarkerDrag(Marker marker) {
+                    mMap.animateCamera(CameraUpdateFactory.newLatLng(marker.getPosition()));
+                    marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
+                    Log.w(TAG, marker.getPosition().latitude + " " + marker.getPosition().longitude);
+                    marker.showInfoWindow();
+
+                }
+
+                @Override
+                public void onMarkerDragEnd(Marker marker) {
+
+                }
+            });
+            mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+                @Override
+                public void onMapLongClick(LatLng latLng) {
+                    MarkerOptions markerOptions = new MarkerOptions()
+                            .position(latLng)
+                            .draggable(true)
+                            .title("marker");
+                    markerCreateList.add(mMap.addMarker(markerOptions));
+                }
+            });
+            mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                @Override
+                public boolean onMarkerClick(Marker marker) {
+                    Log.w(TAG, marker.getTitle() + " " + marker.getPosition().toString());
+                    marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
+                    marker.showInfoWindow();
+                    selectedMarker = marker;
+                    return true;
                 }
             });
             mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
@@ -421,6 +435,55 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     });
                     AlertDialog alert = builder.create();
                     alert.show();
+                }
+            });
+        }
+    }
+
+    public void removeMarkerFunction(){
+        if(mMap != null){
+            selectedMarker = null;
+            frameLayout.setVisibility(View.GONE);
+            findButton.setVisibility(View.VISIBLE);
+            mMap.setInfoWindowAdapter(null);
+            mMap.setOnMarkerDragListener(null);
+            mMap.setOnMapLongClickListener(null);
+            mMap.setOnMarkerClickListener(null);
+            mMap.setOnInfoWindowClickListener(null);
+            for(Marker marker : markerCreateList){
+                Log.w(TAG, marker.getTitle());
+                marker.setDraggable(false);
+            }
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        if (drawer.isDrawerOpen(GravityCompat.START)) {
+            drawer.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+        mMap.addMarker(new MarkerOptions().position(new LatLng(-34, 149)).title("first marker"));
+        final LatLng position = new LatLng(-34, 151);
+        try {
+            final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
+            cameraPositionLiveData.observeForever(new Observer<CameraPosition>() {
+                @Override
+                public void onChanged(@Nullable CameraPosition cameraPosition) {
+                    Log.w(TAG, "call?");
+                    if(cameraPosition != null) {
+                        Log.w(TAG, "moveCamera");
+                        mMap.setMyLocationEnabled(true);
+                        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+                        cameraPositionLiveData.removeObserver(this);
+                    }
                 }
             });
 //            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mMapModel.getCameraPosition().getValue()));
