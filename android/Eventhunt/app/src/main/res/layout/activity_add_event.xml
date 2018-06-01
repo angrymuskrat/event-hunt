@@ -127,7 +127,7 @@
                 android:layout_marginTop="8dp"
                 android:ems="10"
                 android:hint="Адрес..."
-                android:inputType="text|textMultiLine|textPostalAddress"
+                android:inputType="text|textMultiLine"
                 android:singleLine="false"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"

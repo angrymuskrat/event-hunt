@@ -4,17 +4,31 @@ import android.location.Address;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
+// TODO create field for owner
 public class Event implements Parcelable{
     private String title;
     private Address address;
     private String description;
     private Calendar startEvent;
+    private String type;
+    private double cost;
+    private static SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
 
     public Event(){
 
+    }
+
+    public static String convertDateToString(Date date){
+        return sdf.format(date);
+    }
+
+    public static Date convertStringToDate(String date) throws ParseException {
+        return sdf.parse(date);
     }
 
     protected Event(Parcel in) {
@@ -23,6 +37,28 @@ public class Event implements Parcelable{
         description = in.readString();
         startEvent = Calendar.getInstance();
         startEvent.setTime(new Date(in.readLong()));
+        type = in.readString();
+        cost = in.readDouble();
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public double getCost() {
+        return cost;
+    }
+
+    public void setCost(double cost) {
+        this.cost = cost;
+    }
+
+    public void setType(String type, String genre) {
+        this.type = type + "/" + genre;
     }
 
     public String getTitle() {
@@ -80,16 +116,19 @@ public class Event implements Parcelable{
         dest.writeParcelable(address, flags);
         dest.writeString(description);
         dest.writeLong(startEvent.getTime().getTime());
+        dest.writeString(type);
+        dest.writeDouble(cost);
     }
 
     @Override
     public String toString() {
-        String theDate = startEvent.get(Calendar.HOUR_OF_DAY) + ":" + startEvent.get(Calendar.MINUTE) + ":00 "
-                + startEvent.get(Calendar.DAY_OF_MONTH) + "." + startEvent.get(Calendar.MONTH) + "." + startEvent.get(Calendar.YEAR);
+        String theDate = convertDateToString(startEvent.getTime());
         return "Event{" +
                 "title='" + title + '\'' +
+                ", type='" + type + "\'" +
                 ", address=" + address +
                 ", description='" + description + '\'' +
+                ", cost='" + cost + '\'' +
                 ", startEvent=" + theDate +
                 '}';
     }
