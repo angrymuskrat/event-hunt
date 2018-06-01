@@ -1,27 +1,29 @@
 package com.eventhunt;
 
 import android.annotation.SuppressLint;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
-import android.os.Parcelable;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.CalendarView;
+import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.eventhunt.entity.Event;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -35,10 +37,13 @@ public class AddEventActivity extends AppCompatActivity {
     private EditText title;
     private EditText description;
     private EditText editTextAddress;
+    private EditText dateEditText;
+    private ImageButton eventDateButton;
     private Address address;
     private Date date;
-    private Calendar calendar;
+    private Calendar dateTime;
     private TimePicker timeEvent;
+    private SimpleDateFormat sdf;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -52,11 +57,45 @@ public class AddEventActivity extends AppCompatActivity {
             Address address = intent.getParcelableExtra("Address");
             editTextAddress.setText(address.getAddressLine(0));
         }
+        dateEditText = findViewById(R.id.editText2);
+        dateTime = Calendar.getInstance();
+        sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+
         title = findViewById(R.id.et_name_event);
-        description = findViewById(R.id.et_info_event);
-        CalendarView calendarView = findViewById(R.id.calendarView_date);
-        calendar = Calendar.getInstance();
-        timeEvent = findViewById(R.id.tp_time);
+        eventDateButton = findViewById(R.id.ib_date_event);
+        eventDateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final Calendar calendar = Calendar.getInstance();
+
+                DatePickerDialog date = new DatePickerDialog(AddEventActivity.this, new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                        dateTime.set(Calendar.YEAR, year);
+                        dateTime.set(Calendar.MONTH, month);
+                        dateTime.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+                    }
+                }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
+                date.getDatePicker().setMinDate(calendar.getTime().getTime());
+                TimePickerDialog time = new TimePickerDialog(AddEventActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                        dateTime.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                        dateTime.set(Calendar.MINUTE, minute);
+
+                        String df = sdf.format(dateTime.getTime());
+                        dateEditText.setText(df);
+                    }
+                }, 12, 0, true);
+                time.show();
+
+                date.show();
+
+            }
+        });
+        //description = findViewById(R.id.et_info_event);
+        //CalendarView calendarView = findViewById(R.id.calendarView_date);
+        /*timeEvent = findViewById(R.id.tp_time);
         calendarView.setMinDate(calendar.getTime().getTime());
         calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
             @Override
@@ -70,7 +109,7 @@ public class AddEventActivity extends AppCompatActivity {
                 calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
                 calendar.set(Calendar.MINUTE, minute);
             }
-        });
+        });*/
         title.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -87,12 +126,12 @@ public class AddEventActivity extends AppCompatActivity {
                 return true;
             }
         });
-        description.setOnKeyListener(new View.OnKeyListener() {
+        /*description.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 return description.getText().length() < 500;
             }
-        });
+        });*/
 
 
     }
@@ -111,7 +150,7 @@ public class AddEventActivity extends AppCompatActivity {
             case R.id.item_add_event:
                 Event event = new Event();
                 event.setTitle(title.getText().toString());
-                event.setDescription(description.getText().toString());
+                //event.setDescription(description.getText().toString());
                 if(address == null){
                     try {
                         Geocoder geocoder = new Geocoder(this);
@@ -124,11 +163,19 @@ public class AddEventActivity extends AppCompatActivity {
                     }
                 }
                 event.setAddress(address);
-                if(calendar.isSet(Calendar.MINUTE)){
-                    event.setStartEvent(calendar);
-                } else{
-                    timeEvent.setFocusable(true);
-                    Toast.makeText(this, "Установите время", Toast.LENGTH_SHORT).show();
+                if(!dateEditText.getText().toString().isEmpty()) {
+                    String strDate = dateEditText.getText().toString();
+                    Date date;
+                    try {
+                         date = sdf.parse(strDate);
+                    } catch (ParseException e) {
+                        Toast.makeText(AddEventActivity.this, "Неправильно введен формат даты", Toast.LENGTH_SHORT).show();
+                        dateEditText.setFocusable(true);
+                        return false;
+                    }
+                    if(date.getTime() != dateTime.getTime().getTime())
+                        dateTime.setTime(date);
+                    event.setStartEvent(dateTime);
                 }
                 Intent intent = new Intent();
                 intent.putExtra(EVENT_KEY, event);
@@ -138,5 +185,12 @@ public class AddEventActivity extends AppCompatActivity {
 
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        setResult(RESULT_FAIL_CODE);
+        finish();
     }
 }
