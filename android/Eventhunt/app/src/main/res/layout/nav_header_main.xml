@@ -6,7 +6,7 @@
     android:layout_height="wrap_content">
 
     <ImageView
-        android:id="@+id/imageView"
+        android:id="@+id/iv_photo"
         android:layout_width="72dp"
         android:layout_height="72dp"
         android:layout_marginStart="32dp"
@@ -19,24 +19,23 @@
         android:id="@+id/barrier2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="104dp"
         app:barrierDirection="right"
-        app:constraint_referenced_ids="imageView" />
+        app:constraint_referenced_ids="iv_photo" />
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/tv_first_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         android:text="TextView"
-        app:layout_constraintBottom_toTopOf="@+id/textView2"
+        app:layout_constraintBottom_toTopOf="@+id/tv_second_name"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/barrier2"
         app:layout_constraintTop_toBottomOf="@+id/barrier3" />
 
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/tv_second_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
@@ -45,19 +44,19 @@
         app:layout_constraintBottom_toTopOf="@+id/barrier4"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/barrier2"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_first_name" />
 
     <android.support.constraint.Barrier
         android:id="@+id/barrier3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="top"
-        app:constraint_referenced_ids="imageView" />
+        app:constraint_referenced_ids="iv_photo" />
 
     <android.support.constraint.Barrier
         android:id="@+id/barrier4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="imageView" />
+        app:constraint_referenced_ids="iv_photo" />
 </android.support.constraint.ConstraintLayout>

@@ -11,26 +11,32 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.util.Log;
 
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class MapModel extends ViewModel {
+    private static final String TAG = MapModel.class.getSimpleName();
+
     private MutableLiveData<CameraPosition> cameraPositionLiveData;
     private LocationManager mLocationManager;
     private Map<String, Boolean> permissionIsCalled;
+
 
     public MapModel() {
         cameraPositionLiveData = new MutableLiveData<>();
         permissionIsCalled = new HashMap<>();
     }
 
-    public void setPermissionIsCalled(Set<String> permission) {
-        for (String p : permission) {
+    public void setPermission(String[] permissions) {
+        for (String p : permissions) {
             permissionIsCalled.put(p, false);
         }
     }
@@ -47,7 +53,9 @@ public class MapModel extends ViewModel {
     }
 
     public void setCameraPositionLiveData(CameraPosition cameraPosition) {
-        cameraPositionLiveData.setValue(cameraPosition);
+        Boolean perm = permissionIsCalled.get(Manifest.permission.ACCESS_FINE_LOCATION);
+        if (perm != null && perm)
+            cameraPositionLiveData.setValue(cameraPosition);
     }
 
 
@@ -61,27 +69,36 @@ public class MapModel extends ViewModel {
     @SuppressLint("MissingPermission")
     private void updateCameraPosition() {
         Boolean perm = permissionIsCalled.get(Manifest.permission.ACCESS_FINE_LOCATION);
-        if (perm != null && perm)
-            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, new LocationListener() {
+        Log.w(TAG, (perm == null) + " " + perm);
+        if (perm != null && perm) {
+            final LocationListener locationListener = new LocationListener() {
                 @Override
                 public void onLocationChanged(Location location) {
+                    Log.w(TAG + "Location", "LocationChanged");
                     CameraPosition cameraPosition = new CameraPosition.Builder()
                             .target(new LatLng(location.getLatitude(), location.getLongitude())).zoom(10).build();
                     cameraPositionLiveData.setValue(cameraPosition);
+                    mLocationManager.removeUpdates(this);
                 }
 
                 @Override
                 public void onStatusChanged(String provider, int status, Bundle extras) {
+                    Log.w(TAG + "Location", "StatusChanged");
                 }
 
                 @Override
                 public void onProviderEnabled(String provider) {
+                    Log.w(TAG + "Location", "ProviderEnabled");
                 }
 
                 @Override
                 public void onProviderDisabled(String provider) {
+                    Log.w(TAG + "Location", "ProviderDisable");
                 }
-            }, null);
+            };
+            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, locationListener, null);
+        }
+
     }
 
 }
