@@ -16,7 +16,9 @@ import android.util.Log;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,6 +28,7 @@ public class MapModel extends ViewModel {
     private MutableLiveData<CameraPosition> cameraPositionLiveData;
     private LocationManager mLocationManager;
     private Map<String, Boolean> permissionIsCalled;
+
 
     public MapModel() {
         cameraPositionLiveData = new MutableLiveData<>();

@@ -30,4 +30,9 @@
     <string name="sb_time_title">Начало в течении</string>
     <string name="sb_cost_title">Билеты до</string>
     <string name="find">Найти</string>
+
+    <!-- string const of InfoEventFragment -->
+    <string name="info_box_time">Начало</string>
+    <string name="info_box_cost">Билеты от</string>
+
 </resources>

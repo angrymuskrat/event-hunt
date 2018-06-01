@@ -38,12 +38,12 @@ public class AddEventActivity extends AppCompatActivity {
     private EditText description;
     private EditText editTextAddress;
     private EditText dateEditText;
+    private EditText costEditText;
     private ImageButton eventDateButton;
     private Address address;
     private Date date;
     private Calendar dateTime;
     private TimePicker timeEvent;
-    private SimpleDateFormat sdf;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -55,12 +55,12 @@ public class AddEventActivity extends AppCompatActivity {
         editTextAddress = findViewById(R.id.et_address);
         if(intent != null){
             Address address = intent.getParcelableExtra("Address");
-            editTextAddress.setText(address.getAddressLine(0));
+            if(address != null)
+                editTextAddress.setText(address.getAddressLine(0));
         }
         dateEditText = findViewById(R.id.editText2);
         dateTime = Calendar.getInstance();
-        sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
-
+        costEditText = findViewById(R.id.et_cost_ticket);
         title = findViewById(R.id.et_name_event);
         eventDateButton = findViewById(R.id.ib_date_event);
         eventDateButton.setOnClickListener(new View.OnClickListener() {
@@ -83,7 +83,7 @@ public class AddEventActivity extends AppCompatActivity {
                         dateTime.set(Calendar.HOUR_OF_DAY, hourOfDay);
                         dateTime.set(Calendar.MINUTE, minute);
 
-                        String df = sdf.format(dateTime.getTime());
+                        String df = Event.convertDateToString(dateTime.getTime());
                         dateEditText.setText(df);
                     }
                 }, 12, 0, true);
@@ -167,7 +167,7 @@ public class AddEventActivity extends AppCompatActivity {
                     String strDate = dateEditText.getText().toString();
                     Date date;
                     try {
-                         date = sdf.parse(strDate);
+                         date = Event.convertStringToDate(strDate);
                     } catch (ParseException e) {
                         Toast.makeText(AddEventActivity.this, "Неправильно введен формат даты", Toast.LENGTH_SHORT).show();
                         dateEditText.setFocusable(true);
@@ -177,6 +177,7 @@ public class AddEventActivity extends AppCompatActivity {
                         dateTime.setTime(date);
                     event.setStartEvent(dateTime);
                 }
+                event.setCost(Double.parseDouble(costEditText.getText().toString()));
                 Intent intent = new Intent();
                 intent.putExtra(EVENT_KEY, event);
                 setResult(RESULT_SUCCESSFUL_CODE, intent);

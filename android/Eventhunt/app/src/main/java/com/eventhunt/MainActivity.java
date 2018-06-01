@@ -72,10 +72,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ProgressBar progressBar;
     private MapModel mMapModel;
     private FrameLayout frameLayout;
+    private View addEventLayout;
     private Button findButton;
     private Button addEventButton;
     private Button removeEventButton;
     private NavigationView navigationView;
+    private View fragmentLayout;
 
     private GoogleMap mMap;
     private FirebaseAuth firebaseAuth;
@@ -84,11 +86,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private List<Marker> markerCreateList;
     private Marker selectedMarker;
 
+    public class OnMarkerClickListenerImpl implements GoogleMap.OnMarkerClickListener{
+        private final String TAG = OnMarkerClickListenerImpl.class.getSimpleName();
 
-    // TODO create activity for entry in app (Login activity)
-    // TODO check user after login or come up with another logic for checking users
-    // TODO check google account and get Token
-    @Override
+        @Override
+        public boolean onMarkerClick(Marker marker) {
+            if(marker.getTag() != null) {
+                if ((Integer) marker.getTag() == 0) {
+                    Log.w(TAG, marker.getTitle() + " " + marker.getPosition().toString());
+                    marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
+                    marker.showInfoWindow();
+                    selectedMarker = marker;
+                    return true;
+                } else if((Integer)marker.getTag() == 1){
+                    selectedMarker = marker;
+                    fragmentLayout.setVisibility(View.VISIBLE);
+                    addEventLayout.setVisibility(View.GONE);
+                    marker.showInfoWindow();
+                    mFragmentManager.beginTransaction().replace(R.id.frag_event,
+                            InfoEventFragment.getInstance(User.getEvent(marker.hashCode()))).commit();
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -199,7 +222,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    // TODO if mMap is show on activity, but we haven't yet received permission, after that we should run method for detect user location
     private void addInPermissionGranted(String permission) {
         switch (permission) {
             case Manifest.permission.ACCESS_FINE_LOCATION:
@@ -261,8 +283,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
         navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        mFragmentManager = getSupportFragmentManager();
 
-
+        fragmentLayout = findViewById(R.id.frag_event);
+        addEventLayout = findViewById(R.id.add_event_layout);
         frameLayout = findViewById(R.id.frameLayout2);
         findButton = findViewById(R.id.btn_find_map);
         addEventButton = findViewById(R.id.btn_add_event_bottom);
@@ -345,7 +369,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 //startActivityForResult(intent, FILTER_REQUEST_CODE);
                 break;
             case R.id.nav_add_event:
-                // TODO add action for adding events
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
                 //intent = new Intent(this, AddEventActivity.class);
                 //startActivityForResult(intent, ADD_EVENT_REQUEST_CODE);
@@ -374,13 +397,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void addMarkerFunctional() {
         if (mMap != null) {
-            frameLayout.setVisibility(View.VISIBLE);
+            addEventLayout.setVisibility(View.VISIBLE);
             findButton.setVisibility(View.GONE);
             for (Marker marker : markerCreateList) {
                 marker.setDraggable(true);
             }
-            AddInfoWindowAdapter addInfoWindowAdapter = new AddInfoWindowAdapter(this);
-            mMap.setInfoWindowAdapter(addInfoWindowAdapter);
             mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
                 @Override
                 public void onMarkerDragStart(Marker marker) {
@@ -408,17 +429,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             .position(latLng)
                             .draggable(true)
                             .title("marker");
-                    markerCreateList.add(mMap.addMarker(markerOptions));
-                }
-            });
-            mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-                @Override
-                public boolean onMarkerClick(Marker marker) {
-                    Log.w(TAG, marker.getTitle() + " " + marker.getPosition().toString());
-                    marker.setSnippet(marker.getPosition().latitude + ";" + marker.getPosition().longitude);
-                    marker.showInfoWindow();
-                    selectedMarker = marker;
-                    return true;
+                    Marker bufMarker = mMap.addMarker(markerOptions);
+                    bufMarker.setTag(0);
+                    selectedMarker = bufMarker;
+                    markerCreateList.add(bufMarker);
                 }
             });
             mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
@@ -453,7 +467,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Intent intent = new Intent(MainActivity.this, AddEventActivity.class);
         Geocoder geocoder = new Geocoder(this);
         try {
-            Address address = geocoder.getFromLocation(marker.getPosition().latitude, marker.getPosition().longitude, 1).get(0);
+            Address address = null;
+            if(marker != null)
+                address = geocoder.getFromLocation(marker.getPosition().latitude, marker.getPosition().longitude, 1).get(0);
             if(address != null)
                 intent.putExtra("Address", address);
 
@@ -467,14 +483,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void removeMarkerFunction(){
         if(mMap != null){
             selectedMarker = null;
-            frameLayout.setVisibility(View.GONE);
+            addEventLayout.setVisibility(View.GONE);
             findButton.setVisibility(View.VISIBLE);
-            mMap.setInfoWindowAdapter(null);
             mMap.setOnMarkerDragListener(null);
             mMap.setOnMapLongClickListener(null);
-            mMap.setOnMarkerClickListener(null);
             mMap.setOnInfoWindowClickListener(null);
             for(Marker marker : markerCreateList){
+                if(marker.getTitle() == null){
+                    marker.remove();
+                    continue;
+                }
                 Log.w(TAG, marker.getTitle());
                 marker.setDraggable(false);
             }
@@ -495,6 +513,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         mMap.addMarker(new MarkerOptions().position(new LatLng(-34, 149)).title("first marker"));
+        AddInfoWindowAdapter addInfoWindowAdapter = new AddInfoWindowAdapter(this);
+        mMap.setInfoWindowAdapter(addInfoWindowAdapter);
+        mMap.setOnMarkerClickListener(new OnMarkerClickListenerImpl());
+        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                selectedMarker = null;
+                fragmentLayout.setVisibility(View.GONE);
+                if(enableMarkerFunction)
+                    addEventLayout.setVisibility(View.VISIBLE);
+            }
+        });
         final LatLng position = new LatLng(-34, 151);
         try {
             final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
@@ -534,7 +564,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if(requestCode == ADD_EVENT_REQUEST_CODE){
             if(resultCode == AddEventActivity.RESULT_SUCCESSFUL_CODE){
                 Event event = data.getParcelableExtra(AddEventActivity.EVENT_KEY);
-                User.addEvent(event);
+                Log.w(TAG, selectedMarker.getId());
+                User.addEvent(selectedMarker.hashCode(), event);
+                selectedMarker.setTag(1);
+                selectedMarker.showInfoWindow();
                 Log.w(TAG + "Event", event.toString());
             }
         }
