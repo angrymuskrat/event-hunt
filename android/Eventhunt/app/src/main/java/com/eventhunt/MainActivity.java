@@ -1,6 +1,7 @@
 package com.eventhunt;
 
 import android.Manifest;
+import android.app.Activity;
 import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
@@ -18,15 +19,19 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.KeyEvent;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.animation.Animation;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -35,6 +40,8 @@ import android.widget.Toast;
 
 import com.eventhunt.entity.Event;
 import com.eventhunt.entity.User;
+import com.eventhunt.model.EventModel;
+import com.eventhunt.util.ExecutorUtil;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.common.api.ApiException;
@@ -56,9 +63,7 @@ import com.squareup.picasso.Picasso;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback {
 
@@ -68,9 +73,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int FILTER_REQUEST_CODE = 1002;
     private static final int ADD_EVENT_REQUEST_CODE = 1003;
 
+    private MapModel mMapModel;
+    private EventModel mEventModel;
+
     private FragmentManager mFragmentManager;
     private ProgressBar progressBar;
-    private MapModel mMapModel;
     private FrameLayout frameLayout;
     private View addEventLayout;
     private Button findButton;
@@ -78,6 +85,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private Button removeEventButton;
     private NavigationView navigationView;
     private View fragmentLayout;
+    private DrawerLayout drawer;
+    private EditText findEditText;
+    private Toolbar myToolbar;
 
     private GoogleMap mMap;
     private FirebaseAuth firebaseAuth;
@@ -103,8 +113,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     fragmentLayout.setVisibility(View.VISIBLE);
                     addEventLayout.setVisibility(View.GONE);
                     marker.showInfoWindow();
-                    mFragmentManager.beginTransaction().replace(R.id.frag_event,
-                            InfoEventFragment.getInstance(User.getEvent(marker.hashCode()))).commit();
+                    Event buf = mEventModel.getEventById(marker.hashCode());
+                    if(buf != null)
+                        mFragmentManager.beginTransaction().replace(R.id.frag_event,
+                                InfoEventFragment.getInstance(buf)).commit();
+                    else
+                        Log.e(TAG, "{marker = " + marker.toString() + "}" );
                     return true;
                 }
             }
@@ -117,12 +131,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setContentView(R.layout.activity_main);
         firebaseAuth = FirebaseAuth.getInstance();
         mMapModel = ViewModelProviders.of(this).get(MapModel.class);
+        mEventModel = ViewModelProviders.of(this).get(EventModel.class);
         mMapModel.setLocationManager(this);
         mMapModel.setPermission(PERMISSIONS_REQUEST);
         mFragmentManager = getSupportFragmentManager();
         checkGoogleAccount();
         init();
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.toolbar_main_menu, menu);
+        return true;
+    }
+
+
 
     private void checkGoogleAccount(){
         GoogleSignInAccount mGoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(this);
@@ -190,6 +213,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onResume() {
         super.onResume();
         checkPermission();
+        findEditText.clearFocus();
         LiveData<CameraPosition> position = mMapModel.getCameraPosition();
         if(position != null){
             if(mMap != null)
@@ -267,18 +291,50 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Geocoder geocoder = new Geocoder(MainActivity.this);
         markerCreateList = new ArrayList<>();
         progressBar = findViewById(R.id.progressBar);
-        Toolbar myToolbar = findViewById(R.id.my_toolbar);
+        myToolbar = findViewById(R.id.my_toolbar);
+        findEditText = myToolbar.findViewById(R.id.et_find_toolbar);
+        findEditText.setFocusableInTouchMode(true);
         setSupportActionBar(myToolbar);
+        final ActionBar actionBar = getSupportActionBar();
+        if(actionBar != null){
+            actionBar.setDisplayHomeAsUpEnabled(true);
+            //actionBar.setHomeAsUpIndicator(android.R.drawable.ic_menu_view);
+        } else
+            Log.w(TAG, "ActionBar is null!");
 
+        findEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if(actionBar == null)
+                    return;
+                if((actionBar.getDisplayOptions() & ActionBar.DISPLAY_HOME_AS_UP) == ActionBar.DISPLAY_HOME_AS_UP && hasFocus)
+                    actionBar.setDisplayHomeAsUpEnabled(false);
+                else if(!hasFocus)
+                    actionBar.setDisplayHomeAsUpEnabled(true);
+                Log.w(TAG, "displayOptions = " + actionBar.getDisplayOptions()
+                + " vs " + ActionBar.DISPLAY_HOME_AS_UP);
+
+            }
+        });
+        findEditText.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if(event.getKeyCode() == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP){
+                    findEditText.clearFocus();
+                }
+                return true;
+            }
+        });
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         View viewMap = mapFragment.getView();
         //viewMap.setAnimation(new MapResizeAnimation(viewMap, 200));
 
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, null, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        toggle.setDrawerIndicatorEnabled(true);
         drawer.addDrawerListener(toggle);
         toggle.syncState();
         navigationView = findViewById(R.id.nav_view);
@@ -349,6 +405,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case android.R.id.home:
+                drawer.openDrawer(GravityCompat.START);
+                return true;
+            case R.id.toolbar_find_btn:
+                if(!findEditText.hasFocus() && findEditText.getText().toString().isEmpty()) {
+                    findEditText.requestFocus();
+                } else {
+                    Log.w(TAG + "Find", "find " + findEditText.getText());
+                    Toast.makeText(this, "find " + findEditText.getText(), Toast.LENGTH_SHORT).show();
+                }
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         boolean isSelected = false;
@@ -390,8 +463,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 Log.i(TAG, item.getTitle() + " item in navigation is clicked");
                 break;
         }
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        drawer.closeDrawer(GravityCompat.START);
+        drawer.closeDrawers();
         return true;
     }
 
@@ -399,9 +471,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (mMap != null) {
             addEventLayout.setVisibility(View.VISIBLE);
             findButton.setVisibility(View.GONE);
-            for (Marker marker : markerCreateList) {
-                marker.setDraggable(true);
-            }
             mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
                 @Override
                 public void onMarkerDragStart(Marker marker) {
@@ -425,6 +494,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
                 @Override
                 public void onMapLongClick(LatLng latLng) {
+                    if(selectedMarker != null && (int) selectedMarker.getTag() == 0) {
+                        selectedMarker.remove();
+                    }
                     MarkerOptions markerOptions = new MarkerOptions()
                             .position(latLng)
                             .draggable(true)
@@ -432,7 +504,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     Marker bufMarker = mMap.addMarker(markerOptions);
                     bufMarker.setTag(0);
                     selectedMarker = bufMarker;
-                    markerCreateList.add(bufMarker);
                 }
             });
             mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
@@ -482,20 +553,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public void removeMarkerFunction(){
         if(mMap != null){
+            if((int)selectedMarker.getTag() == 0)
+                selectedMarker.remove();
+            else {
+                selectedMarker.setDraggable(false);
+            }
             selectedMarker = null;
             addEventLayout.setVisibility(View.GONE);
             findButton.setVisibility(View.VISIBLE);
             mMap.setOnMarkerDragListener(null);
             mMap.setOnMapLongClickListener(null);
             mMap.setOnInfoWindowClickListener(null);
-            for(Marker marker : markerCreateList){
-                if(marker.getTitle() == null){
-                    marker.remove();
-                    continue;
-                }
-                Log.w(TAG, marker.getTitle());
-                marker.setDraggable(false);
-            }
         }
     }
 
@@ -512,7 +580,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        mMap.addMarker(new MarkerOptions().position(new LatLng(-34, 149)).title("first marker"));
+        LiveData<List<Event>> events = mEventModel.getAllEvent();
+        events.observeForever(new Observer<List<Event>>() {
+            @Override
+            public void onChanged(@Nullable List<Event> events) {
+                if(events != null && events.size() > 0)
+                    for(Event event : events){
+                        Marker marker = mMap.addMarker(new MarkerOptions()
+                                .position(event.getPosition())
+                                .title(event.getTitle())
+                                .snippet(event.getType()));
+                        marker.setTag(1);
+                        event.setIdMarker(marker.hashCode());
+                    }
+            }
+        });
         AddInfoWindowAdapter addInfoWindowAdapter = new AddInfoWindowAdapter(this);
         mMap.setInfoWindowAdapter(addInfoWindowAdapter);
         mMap.setOnMarkerClickListener(new OnMarkerClickListenerImpl());
@@ -521,11 +603,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onMapClick(LatLng latLng) {
                 selectedMarker = null;
                 fragmentLayout.setVisibility(View.GONE);
+                if(myToolbar.hasFocus()){
+                    findEditText.setFocusableInTouchMode(false);
+                    findEditText.setFocusable(false);
+                    findEditText.setFocusableInTouchMode(true);
+                    findEditText.setFocusable(true);
+                    InputMethodManager imm = (InputMethodManager)
+                            getSystemService(Activity.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
+                }
                 if(enableMarkerFunction)
                     addEventLayout.setVisibility(View.VISIBLE);
             }
         });
-        final LatLng position = new LatLng(-34, 151);
         try {
             final LiveData<CameraPosition> cameraPositionLiveData = mMapModel.getCameraPosition();
             cameraPositionLiveData.observeForever(new Observer<CameraPosition>() {
@@ -544,9 +634,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } catch (SecurityException e){
             Log.w(TAG, "We don't have permission for detected user location!\n" + e.getMessage());
         }
-
-        mMap.addMarker(new MarkerOptions().position(position).title("Marker in Sydney"));
-        //mMap.moveCamera(CameraUpdateFactory.newLatLng(position));
     }
 
     @Override
@@ -566,8 +653,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 Event event = data.getParcelableExtra(AddEventActivity.EVENT_KEY);
                 Log.w(TAG, selectedMarker.getId());
                 User.addEvent(selectedMarker.hashCode(), event);
+                mEventModel.insertToDB(event);
+                selectedMarker.setDraggable(false);
                 selectedMarker.setTag(1);
                 selectedMarker.showInfoWindow();
+                markerCreateList.add(selectedMarker);
                 Log.w(TAG + "Event", event.toString());
             }
         }
