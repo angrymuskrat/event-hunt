@@ -1,8 +1,16 @@
 package com.eventhunt.entity;
 
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.Ignore;
+import android.arch.persistence.room.PrimaryKey;
+import android.arch.persistence.room.TypeConverters;
 import android.location.Address;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import com.eventhunt.converter.AddressConverter;
+import com.eventhunt.converter.CalendarConverter;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -10,17 +18,32 @@ import java.util.Calendar;
 import java.util.Date;
 
 // TODO create field for owner
+@Entity
 public class Event implements Parcelable{
+    @PrimaryKey
+    public int id;
     private String title;
+    @TypeConverters(AddressConverter.class)
     private Address address;
     private String description;
+    @TypeConverters(CalendarConverter.class)
     private Calendar startEvent;
     private String type;
     private double cost;
+    @Ignore
+    private int idMarker;
     private static SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
 
     public Event(){
 
+    }
+
+    public int getIdMarker() {
+        return idMarker;
+    }
+
+    public void setIdMarker(int idMarker) {
+        this.idMarker = idMarker;
     }
 
     public static String convertDateToString(Date date){
@@ -67,6 +90,10 @@ public class Event implements Parcelable{
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public LatLng getPosition(){
+        return new LatLng(address.getLatitude(), address.getLongitude());
     }
 
     public Address getAddress() {
