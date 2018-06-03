@@ -110,10 +110,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return true;
                 } else if((Integer)marker.getTag() == 1){
                     selectedMarker = marker;
-                    fragmentLayout.setVisibility(View.VISIBLE);
-                    addEventLayout.setVisibility(View.GONE);
+                    showInfoBox();
+                    //fragmentLayout.setVisibility(View.VISIBLE);
+                    //addEventLayout.setVisibility(View.GONE);
                     marker.showInfoWindow();
-                    Event buf = mEventModel.getEventById(marker.hashCode());
+                    Event buf = mEventModel.getEventById(marker.getId());
                     if(buf != null)
                         mFragmentManager.beginTransaction().replace(R.id.frag_event,
                                 InfoEventFragment.getInstance(buf)).commit();
@@ -305,14 +306,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         findEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                if(actionBar == null)
+                /*if(actionBar == null)
                     return;
                 if((actionBar.getDisplayOptions() & ActionBar.DISPLAY_HOME_AS_UP) == ActionBar.DISPLAY_HOME_AS_UP && hasFocus)
                     actionBar.setDisplayHomeAsUpEnabled(false);
                 else if(!hasFocus)
                     actionBar.setDisplayHomeAsUpEnabled(true);
                 Log.w(TAG, "displayOptions = " + actionBar.getDisplayOptions()
-                + " vs " + ActionBar.DISPLAY_HOME_AS_UP);
+                + " vs " + ActionBar.DISPLAY_HOME_AS_UP);*/
 
             }
         });
@@ -416,6 +417,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 } else {
                     Log.w(TAG + "Find", "find " + findEditText.getText());
                     Toast.makeText(this, "find " + findEditText.getText(), Toast.LENGTH_SHORT).show();
+                    if(mEventModel.getAllEvent().getValue() != null) {
+                        for (Event event : mEventModel.getAllEvent().getValue()){
+                            if(event.getTitle().equals(findEditText.getText().toString())){
+                                if(selectedMarker != null && (int) selectedMarker.getTag() == 0)
+                                    selectedMarker.remove();
+                                showInfoBox();
+                                selectedMarker = event.getMarker();
+                                selectedMarker.showInfoWindow();
+                                Log.w(TAG, "find marker");
+                                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(event.getPosition(), 15));
+                                return true;
+                            }
+                        }
+                    }
                 }
         }
         return super.onOptionsItemSelected(item);
@@ -586,12 +601,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onChanged(@Nullable List<Event> events) {
                 if(events != null && events.size() > 0)
                     for(Event event : events){
-                        Marker marker = mMap.addMarker(new MarkerOptions()
-                                .position(event.getPosition())
-                                .title(event.getTitle())
-                                .snippet(event.getType()));
+                    Log.w(TAG, event.toString());
+                        Marker marker = mMap.addMarker(event.getMarkerOptions());
                         marker.setTag(1);
-                        event.setIdMarker(marker.hashCode());
+                        event.setIdMarker(marker.getId());
+                        event.setMarker(marker);
                     }
             }
         });
@@ -603,15 +617,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onMapClick(LatLng latLng) {
                 selectedMarker = null;
                 fragmentLayout.setVisibility(View.GONE);
-                if(myToolbar.hasFocus()){
-                    findEditText.setFocusableInTouchMode(false);
-                    findEditText.setFocusable(false);
-                    findEditText.setFocusableInTouchMode(true);
-                    findEditText.setFocusable(true);
-                    InputMethodManager imm = (InputMethodManager)
-                            getSystemService(Activity.INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
-                }
+                clearFocus(findEditText);
                 if(enableMarkerFunction)
                     addEventLayout.setVisibility(View.VISIBLE);
             }
@@ -636,6 +642,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    public void showInfoBox(){
+        fragmentLayout.setVisibility(View.VISIBLE);
+        addEventLayout.setVisibility(View.GONE);
+        if(findEditText.hasFocus()){
+            clearFocus(findEditText);
+        }
+    }
+
+    public void clearFocus(View view){
+        if(view.hasFocus()){
+            view.setFocusableInTouchMode(false);
+            view.setFocusable(false);
+            view.setFocusableInTouchMode(true);
+            view.setFocusable(true);
+            InputMethodManager imm = (InputMethodManager)
+                    getSystemService(Activity.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -651,8 +677,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if(requestCode == ADD_EVENT_REQUEST_CODE){
             if(resultCode == AddEventActivity.RESULT_SUCCESSFUL_CODE){
                 Event event = data.getParcelableExtra(AddEventActivity.EVENT_KEY);
-                Log.w(TAG, selectedMarker.getId());
-                User.addEvent(selectedMarker.hashCode(), event);
+                selectedMarker.remove();
+                selectedMarker = mMap.addMarker(event.getMarkerOptions());
+                Log.w(TAG + "ID", selectedMarker.getId());
+                event.setIdMarker(selectedMarker.getId());
+                event.setMarker(selectedMarker);
                 mEventModel.insertToDB(event);
                 selectedMarker.setDraggable(false);
                 selectedMarker.setTag(1);

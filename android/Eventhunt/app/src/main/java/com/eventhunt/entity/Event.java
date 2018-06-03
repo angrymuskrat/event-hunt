@@ -11,6 +11,8 @@ import android.os.Parcelable;
 import com.eventhunt.converter.AddressConverter;
 import com.eventhunt.converter.CalendarConverter;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -20,7 +22,7 @@ import java.util.Date;
 // TODO create field for owner
 @Entity
 public class Event implements Parcelable{
-    @PrimaryKey
+    @PrimaryKey(autoGenerate = true)
     public int id;
     private String title;
     @TypeConverters(AddressConverter.class)
@@ -31,18 +33,28 @@ public class Event implements Parcelable{
     private String type;
     private double cost;
     @Ignore
-    private int idMarker;
+    private String idMarker;
+    @Ignore
+    private Marker marker;
     private static SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
 
     public Event(){
 
     }
 
-    public int getIdMarker() {
+    public Marker getMarker() {
+        return marker;
+    }
+
+    public void setMarker(Marker marker) {
+        this.marker = marker;
+    }
+
+    public String getIdMarker() {
         return idMarker;
     }
 
-    public void setIdMarker(int idMarker) {
+    public void setIdMarker(String idMarker) {
         this.idMarker = idMarker;
     }
 
@@ -62,6 +74,10 @@ public class Event implements Parcelable{
         startEvent.setTime(new Date(in.readLong()));
         type = in.readString();
         cost = in.readDouble();
+    }
+
+    public MarkerOptions getMarkerOptions(){
+        return new MarkerOptions().title(title).snippet(type).position(getPosition());
     }
 
     public String getType() {
@@ -147,16 +163,18 @@ public class Event implements Parcelable{
         dest.writeDouble(cost);
     }
 
+
     @Override
     public String toString() {
-        String theDate = convertDateToString(startEvent.getTime());
         return "Event{" +
-                "title='" + title + '\'' +
-                ", type='" + type + "\'" +
+                "id=" + id +
+                ", title='" + title + '\'' +
                 ", address=" + address +
                 ", description='" + description + '\'' +
-                ", cost='" + cost + '\'' +
-                ", startEvent=" + theDate +
+                ", startEvent=" + startEvent +
+                ", type='" + type + '\'' +
+                ", cost=" + cost +
+                ", idMarker='" + idMarker + '\'' +
                 '}';
     }
 }

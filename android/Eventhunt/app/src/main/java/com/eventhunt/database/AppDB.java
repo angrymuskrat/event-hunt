@@ -16,7 +16,9 @@ public class AppDB extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        database = Room.databaseBuilder(this, AppDatabase.class, "database").build();
+        database = Room.databaseBuilder(this, AppDatabase.class, "database")
+                .fallbackToDestructiveMigration()
+                .build();
     }
 
     public static AppDB getInstance() {

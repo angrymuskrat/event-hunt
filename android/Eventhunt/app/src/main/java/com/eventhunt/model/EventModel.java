@@ -13,6 +13,7 @@ import com.eventhunt.entity.Event;
 import com.eventhunt.util.ExecutorUtil;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 /**
@@ -45,20 +46,21 @@ public class EventModel extends ViewModel {
     }
 
     public LiveData<List<Event>> getAllEvent(){
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                allEventLiveData.postValue(database.eventDao().getAllEvent());
-            }
-        });
+        if(allEventLiveData.getValue() == null)
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    allEventLiveData.postValue(database.eventDao().getAllEvent());
+                }
+            });
         return allEventLiveData;
     }
 
-    public Event getEventById(int id) {
+    public Event getEventById(String id) {
         if (getAllEvent().getValue() != null) {
             for (Event event :
                     getAllEvent().getValue()) {
-                if (event.getIdMarker() == id) {
+                if (Objects.equals(event.getIdMarker(), id)) {
                     return event;
                 }
             }
