@@ -1,7 +1,7 @@
 # event-hunt
 ip of server: 193.124.205.46
 port of server: 8000
-реализованы следуюшие сервлеты:
+реализованы следуюшие сервлеты:<br>
 1) /getEvents 
   принимает json через post запрос 
   { 
@@ -35,7 +35,7 @@ port of server: 8000
           “instagram” : “ссылка на канал в инсте”
           }
       }] 
-    }
+    } <br>
 2)/addEvent
   принимает post запрос типа json 
   {
@@ -64,7 +64,7 @@ port of server: 8000
 	}
 }
 ответ следующего вида
-{"status":"SUCCESS","errorCode":null}
+{"status":"SUCCESS","errorCode":null}<br>
 3) /signIn
   post запрос след вида
   {
